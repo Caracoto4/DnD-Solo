@@ -1,0 +1,33 @@
+# DnD Solo — конфигурация приложения
+llm:
+  endpoint: "http://localhost:5001/v1/chat/completions"
+  model: "RPBizkitRemiX-v3-12B"          # имя модели в koboldcpp (не критично, koboldcpp игнорирует)
+  temperature: 0.88
+  max_tokens: 1024
+  context_size: 8192
+  request_timeout: 120
+  json_retries: 2
+
+game:
+  rules_edition: "5e_2014"               # 5e_2014 | 5.5e_2024
+  history_max_messages: 20               # сколько последних сообщений отдаём в промпт
+  summarize_every: 20                    # суммаризация каждые N ходов (V2)
+
+translate:
+  enabled: true
+  source_lang: "ru"
+  target_lang: "en"
+  retries: 3
+  backoff_base: 1.0                      # exponential backoff, сек
+
+paths:
+  data_dir: "data"
+  saves_dir: "data/saves"
+  campaigns_dir: "data/campaigns"
+  rules_dir: "data/rules"
+  db_path: "data/dnd_solo.db"
+  llm_log_path: "data/llm_requests.log"
+
+server:
+  host: "127.0.0.1"
+  port: 8000

@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+PyYAML>=6.0
+pydantic>=2.7
+# googletrans 4.0.0rc1 пинает httpx==0.23.0 — наш код совместим с ним
+googletrans==4.0.0rc1
+deep-translator>=1.11
+PyPDF2>=3.0

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>DnD Solo — соло-приключение</title>
+<style>
+  :root {
+    --bg: #1a1410; --panel: #241c15; --panel2: #2e241b; --border: #4a3a28;
+    --text: #e8dcc8; --muted: #a89878; --accent: #c9a227; --danger: #c0392b;
+    --hp: #27ae60; --user: #34495e; --dm: #2c3e50;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: Georgia, 'Times New Roman', serif; height: 100vh; display: flex; flex-direction: column; }
+  header { background: var(--panel); border-bottom: 2px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 20px; color: var(--accent); flex: 1; }
+  header button { background: var(--panel2); color: var(--text); border: 1px solid var(--border); padding: 6px 12px; cursor: pointer; border-radius: 4px; font-family: inherit; }
+  header button:hover { border-color: var(--accent); }
+  #llm-status { font-size: 13px; }
+  .ok { color: var(--hp); } .bad { color: var(--danger); }
+  main { flex: 1; display: flex; overflow: hidden; }
+  #chat-col { flex: 1; display: flex; flex-direction: column; }
+  #chat { flex: 1; overflow-y: auto; padding: 16px; }
+  .msg { max-width: 82%; margin-bottom: 12px; padding: 10px 14px; border-radius: 8px; line-height: 1.45; white-space: pre-wrap; }
+  .msg.user { background: var(--user); margin-left: auto; }
+  .msg.dm { background: var(--dm); border: 1px solid var(--border); }
+  .msg.system { background: transparent; color: var(--muted); font-size: 13px; text-align: center; max-width: 100%; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 8px; }
+  .actions button { background: var(--panel2); color: var(--text); border: 1px dashed var(--border); padding: 6px 10px; cursor: pointer; border-radius: 16px; font-size: 13px; font-family: inherit; }
+  .actions button:hover { border-color: var(--accent); color: var(--accent); }
+  #input-row { display: flex; gap: 8px; padding: 12px 16px; background: var(--panel); border-top: 1px solid var(--border); }
+  #input-row textarea { flex: 1; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: inherit; font-size: 15px; resize: none; height: 60px; }
+  #input-row button { background: var(--accent); color: #1a1410; border: none; padding: 0 22px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: bold; }
+  #input-row button:disabled { opacity: .5; cursor: wait; }
+  aside { width: 320px; background: var(--panel); border-left: 2px solid var(--border); overflow-y: auto; padding: 14px; }
+  aside h2 { font-size: 15px; color: var(--accent); border-bottom: 1px solid var(--border); margin: 14px 0 8px; padding-bottom: 4px; }
+  aside h2:first-child { margin-top: 0; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 14px; padding: 2px 0; }
+  .stat-row .lbl { color: var(--muted); }
+  #hp-bar { height: 18px; background: #402020; border-radius: 9px; overflow: hidden; margin: 6px 0; position: relative; }
+  #hp-fill { height: 100%; background: var(--hp); transition: width .3s; }
+  #hp-text { position: absolute; inset: 0; text-align: center; font-size: 12px; line-height: 18px; color: #fff; text-shadow: 0 0 3px #000; }
+  .inv-item { display: flex; justify-content: space-between; font-size: 14px; padding: 2px 0; }
+  .inv-item .eq { color: var(--accent); }
+  .quest { font-size: 13px; padding: 4px 0; color: var(--text); }
+  .quest .st { color: var(--muted); font-size: 12px; }
+  .cond { display: inline-block; background: #5b2a2a; border: 1px solid var(--danger); border-radius: 10px; font-size: 12px; padding: 1px 8px; margin: 2px; }
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center; z-index: 10; }
+  #overlay .modal { background: var(--panel); border: 2px solid var(--accent); border-radius: 10px; padding: 24px; width: 560px; max-height: 90vh; overflow-y: auto; }
+  #overlay h1 { color: var(--accent); font-size: 22px; margin-bottom: 14px; text-align: center; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .form-grid label { font-size: 13px; color: var(--muted); display: block; }
+  .form-grid input, .form-grid select { width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px; font-family: inherit; }
+  .form-wide { grid-column: span 3; }
+  #overlay .start-btn { width: 100%; background: var(--accent); color: #1a1410; border: none; padding: 12px; font-size: 17px; font-weight: bold; border-radius: 6px; cursor: pointer; font-family: inherit; margin-top: 8px; }
+  .dice-entry { font-size: 12px; color: var(--muted); padding: 4px 0; border-bottom: 1px dotted var(--border); }
+  #dice-form { display: flex; gap: 6px; margin: 6px 0; }
+  #dice-form input { flex: 1; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-family: inherit; font-size: 13px; }
+  #dice-form button { background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-family: inherit; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚔ DnD Solo — Мастер-LLM</h1>
+  <span id="llm-status">проверка…</span>
+  <button onclick="saveGame()">💾 Сохранить</button>
+  <button onclick="loadGame()">📂 Загрузить</button>
+  <button onclick="undoTurn()">↩ Отменить ход</button>
+</header>
+<main>
+  <div id="chat-col">
+    <div id="chat"></div>
+    <div class="actions" id="actions"></div>
+    <div id="input-row">
+      <textarea id="input" placeholder="Ваше действие… (Enter — отправить, Shift+Enter — новая строка)"></textarea>
+      <button id="send-btn" onclick="send()">Отправить</button>
+    </div>
+  </div>
+  <aside>
+    <h2>Персонаж</h2>
+    <div id="char-name">—</div>
+    <div id="char-sub" style="color:var(--muted);font-size:13px;"></div>
+    <div id="hp-bar"><div id="hp-fill" style="width:100%"></div><div id="hp-text"></div></div>
+    <div class="stat-row"><span class="lbl">КД</span><span id="s-ac">—</span></div>
+    <div class="stat-row"><span class="lbl">Скорость</span><span id="s-speed">—</span></div>
+    <div class="stat-row"><span class="lbl">Бонус мастерства</span><span id="s-pb">—</span></div>
+    <div id="abilities" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px;"></div>
+    <div id="conditions" style="margin-top:6px;"></div>
+
+    <h2>Инвентарь</h2>
+    <div id="inventory"></div>
+
+    <h2>Квесты</h2>
+    <div id="quests"></div>
+
+    <h2>Мир</h2>
+    <div class="stat-row"><span class="lbl">Локация</span><span id="w-loc">—</span></div>
+    <div class="stat-row"><span class="lbl">Время</span><span id="w-time">—</span></div>
+    <div class="stat-row"><span class="lbl">Погода</span><span id="w-weather">—</span></div>
+
+    <h2>🎲 Кубики</h2>
+    <form id="dice-form" onsubmit="return rollDice(event)">
+      <input id="dice-input" placeholder="напр. 1d20+5 adv" value="1d20+5">
+      <button type="submit">Бросить</button>
+    </form>
+    <div id="dice-log"></div>
+  </aside>
+</main>
+
+<div id="overlay">
+  <div class="modal">
+    <h1>Создание персонажа</h1>
+    <div class="form-grid">
+      <label class="form-wide">Имя <input id="c-name" value="Арагорн"></label>
+      <label>Раса
+        <select id="c-race">
+          <option>Человек</option><option>Эльф</option><option>Дварф</option>
+          <option>Полурослик</option><option>Полуэльф</option><option>Тифлинг</option>
+          <option>Драконорождённый</option><option>Гном</option>
+        </select>
+      </label>
+      <label>Класс
+        <select id="c-class">
+          <option>Воин</option><option>Следопыт</option><option>Вор</option>
+          <option>Волшебник</option><option>Жрец</option><option>Плут</option>
+          <option>Варвар</option><option>Бард</option><option>Друид</option>
+          <option>Монах</option><option>Паладин</option><option>Чернокнижник</option>
+        </select>
+      </label>
+      <label>Уровень <input id="c-level" type="number" min="1" max="20" value="1"></label>
+      <label>HP <input id="c-hp" type="number" min="1" value="10"></label>
+      <label>КД <input id="c-ac" type="number" min="1" value="12"></label>
+      <label>Скорость <input id="c-speed" type="number" min="0" value="30"></label>
+      <label>STR <input id="c-str" type="number" min="1" max="30" value="10"></label>
+      <label>DEX <input id="c-dex" type="number" min="1" max="30" value="10"></label>
+      <label>CON <input id="c-con" type="number" min="1" max="30" value="10"></label>
+      <label>INT <input id="c-int" type="number" min="1" max="30" value="10"></label>
+      <label>WIS <input id="c-wis" type="number" min="1" max="30" value="10"></label>
+      <label>CHA <input id="c-cha" type="number" min="1" max="30" value="10"></label>
+    </div>
+    <button class="start-btn" onclick="createCharacter()">Начать приключение</button>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let busy = false;
+
+// ── API helpers ──────────────────────────────────────────
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: {'Content-Type': 'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    let detail = r.statusText;
+    try { detail = (await r.json()).detail || detail; } catch(e) {}
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
+// ── Health ───────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const h = await api('/api/health');
+    const el = $('llm-status');
+    if (h.koboldcpp) { el.textContent = '🟢 LLM подключена'; el.className = 'ok'; }
+    else { el.textContent = '🔴 LLM недоступна (koboldcpp)'; el.className = 'bad'; }
+  } catch (e) { $('llm-status').textContent = '🔴 Backend недоступен'; $('llm-status').className = 'bad'; }
+}
+
+// ── Рендер состояния ─────────────────────────────────────
+function renderState(s) {
+  $('char-name').textContent = s.character.name;
+  $('char-sub').textContent = `${s.character.race} ${s.character['class']}, уровень ${s.character.level}`;
+  const hp = s.character.hp;
+  const pct = Math.max(0, Math.min(100, hp.current / hp.max * 100));
+  $('hp-fill').style.width = pct + '%';
+  $('hp-fill').style.background = hp.current <= 0 ? '#7f1d1d' : (pct < 30 ? '#e67e22' : 'var(--hp)');
+  $('hp-text').textContent = `${hp.current} / ${hp.max}${hp.temp ? ' (+' + hp.temp + ' врем.)' : ''}`;
+  $('s-ac').textContent = s.character.ac;
+  $('s-speed').textContent = s.character.speed + ' фт.';
+  $('s-pb').textContent = '+' + s.character.proficiency_bonus;
+  $('abilities').innerHTML = Object.entries(s.character.abilities)
+    .map(([k,v]) => `<div style="text-align:center;background:var(--panel2);border-radius:4px;padding:4px;font-size:13px;"><b>${k}</b><br>${v}</div>`).join('');
+  $('conditions').innerHTML = (s.character.conditions || []).map(c => `<span class="cond">${c}</span>`).join('');
+  $('inventory').innerHTML = (s.inventory || []).length
+    ? s.inventory.map(i => `<div class="inv-item"><span>${i.name}</span><span>${i.equipped ? '<span class="eq">✦ экип.</span> ' : ''}×${i.qty}</span></div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px;">Пусто</div>';
+  $('quests').innerHTML = (s.quests || []).length
+    ? s.quests.map(q => `<div class="quest">• ${q.title} <span class="st">[${q.status}]</span></div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px;">Нет активных квестов</div>';
+  $('w-loc').textContent = s.location || '—';
+  $('w-time').textContent = s.time_of_day || '—';
+  $('w-weather').textContent = s.weather || '—';
+}
+
+// ── Чат ──────────────────────────────────────────────────
+function addMsg(cls, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.textContent = text;
+  $('chat').appendChild(div);
+  $('chat').scrollTop = $('chat').scrollHeight;
+  return div;
+}
+
+function renderActions(actions) {
+  $('actions').innerHTML = '';
+  (actions || []).forEach(a => {
+    const b = document.createElement('button');
+    b.textContent = a;
+    b.onclick = () => { $('input').value = a; send(); };
+    $('actions').appendChild(b);
+  });
+}
+
+async function send() {
+  const text = $('input').value.trim();
+  if (!text || busy) return;
+  busy = true;
+  $('send-btn').disabled = true;
+  $('input').value = '';
+  addMsg('user', text);
+  renderActions([]);
+  const typing = addMsg('system', 'Мастер готовит ответ…');
+  try {
+    const resp = await api('/api/chat', 'POST', { message: text });
+    typing.remove();
+    addMsg('dm', resp.narrative);
+    if (resp.check_results && resp.check_results.length)
+      addMsg('system', '🎲 ' + resp.check_results.join(' | '));
+    if (resp.state_changes_applied && resp.state_changes_applied.length)
+      addMsg('system', '⚙ ' + resp.state_changes_applied.join('; '));
+    renderActions(resp.suggested_actions);
+    renderState(resp.state);
+  } catch (e) {
+    typing.remove();
+    addMsg('system', '⚠ Ошибка: ' + e.message);
+  } finally {
+    busy = false;
+    $('send-btn').disabled = false;
+    $('input').focus();
+  }
+}
+
+$('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+// ── Персонаж ─────────────────────────────────────────────
+async function createCharacter() {
+  const num = id => parseInt($(id).value, 10);
+  try {
+    const s = await api('/api/character', 'POST', {
+      name: $('c-name').value, race: $('c-race').value, class_name: $('c-class').value,
+      level: num('c-level'), str: num('c-str'), dex: num('c-dex'), con: num('c-con'),
+      intelligence: num('c-int'), wis: num('c-wis'), cha: num('c-cha'),
+      hp_max: num('c-hp'), ac: num('c-ac'), speed: num('c-speed'),
+    });
+    $('overlay').style.display = 'none';
+    renderState(s);
+    addMsg('system', 'Добро пожаловать в приключение! Опишите первое действие или попросите Мастера начать.');
+  } catch (e) { alert('Ошибка: ' + e.message); }
+}
+
+// ── Кубики ───────────────────────────────────────────────
+async function rollDice(ev) {
+  ev.preventDefault();
+  try {
+    const r = await api('/api/roll', 'POST', { formula: $('dice-input').value });
+    const shown = r.rolls.filter(x => !r.dropped.includes(x)).join(', ');
+    const div = document.createElement('div');
+    div.className = 'dice-entry';
+    div.textContent = `${r.formula} = ${r.total} (кубики: ${shown}, мод: ${r.modifier >= 0 ? '+' : ''}${r.modifier}${r.mode ? ', ' + r.mode : ''})`;
+    const log = $('dice-log');
+    log.parentNode.insertBefore(div, log);
+  } catch (e) { alert(e.message); }
+  return false;
+}
+
+// ── Сохранения ───────────────────────────────────────────
+async function saveGame() {
+  const name = prompt('Название сохранения:', 'автосейв ' + new Date().toLocaleString());
+  if (!name) return;
+  try { await api('/api/save', 'POST', { name }); addMsg('system', '💾 Сохранено: ' + name); }
+  catch (e) { alert(e.message); }
+}
+async function loadGame() {
+  try {
+    const saves = await api('/api/saves');
+    if (!saves.length) { alert('Сохранений нет'); return; }
+    const name = prompt('Доступные сохранения:\n' + saves.map(s => '• ' + s.name).join('\n'), saves[0].name);
+    if (!name) return;
+    const s = await api('/api/load', 'POST', { name });
+    renderState(s);
+    addMsg('system', '📂 Загружено: ' + name);
+  } catch (e) { alert(e.message); }
+}
+async function undoTurn() {
+  try {
+    const s = await api('/api/undo', 'POST');
+    renderState(s);
+    addMsg('system', '↩ Последний ход отменён');
+  } catch (e) { alert(e.message); }
+}
+
+// ── Init ─────────────────────────────────────────────────
+checkHealth();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>
+

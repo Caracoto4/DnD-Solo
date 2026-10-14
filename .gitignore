@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Данные игры (не коммитятся: БД, сейвы, логи, кэши)
+**/data/*.db
+**/data/saves/*
+**/data/campaigns/*
+**/data/rules/*
+*.log
+
+# Редакторы / ОС
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Node / Electron (появится в итерации 2)
+node_modules/
+dist/
